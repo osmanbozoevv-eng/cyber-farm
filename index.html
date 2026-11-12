@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Кибер-Ферма 2099</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0a0e1a;
+    color: #e0e6ff;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image: 
+      radial-gradient(circle at 20% 10%, rgba(0,255,200,0.08) 0%, transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(150,0,255,0.1) 0%, transparent 40%);
+  }
+  .app { max-width: 500px; margin: 0 auto; padding: 12px; padding-bottom: 80px; }
+
+  /* HEADER */
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(0,255,200,0.2);
+    border-radius: 16px; padding: 12px 16px; margin-bottom: 12px;
+    backdrop-filter: blur(10px);
+  }
+  .stat { display:flex; flex-direction:column; align-items:center; }
+  .stat .val { font-size: 18px; font-weight: 700; color: #00ffc8; text-shadow: 0 0 12px rgba(0,255,200,0.6); }
+  .stat .lbl { font-size: 10px; color: #8892b0; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* LEVEL BAR */
+  .levelbar { margin-bottom: 12px; }
+  .levelbar .info { display:flex; justify-content:space-between; font-size:11px; color:#8892b0; margin-bottom:4px; }
+  .bar { height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow:hidden; }
+  .bar > div { height:100%; background: linear-gradient(90deg,#00ffc8,#00a0ff); border-radius:4px; transition: width 0.4s; box-shadow: 0 0 10px rgba(0,255,200,0.5); }
+
+  /* TABS */
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .tab {
+    flex:1; padding: 10px 4px; text-align:center; font-size: 12px; font-weight:600;
+    background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; cursor:pointer; transition: all 0.2s; color:#8892b0;
+  }
+  .tab.active {
+    background: linear-gradient(135deg, rgba(0,255,200,0.2), rgba(0,160,255,0.2));
+    border-color: rgba(0,255,200,0.5); color:#00ffc8;
+    box-shadow: 0 0 16px rgba(0,255,200,0.2);
+  }
+
+  /* PANELS */
+  .panel { display: none; animation: fadeIn 0.3s; }
+  .panel.active { display: block; }
+  @keyframes fadeIn { from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+
+  /* GRID (грядки) */
+  .grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+  .plot {
+    aspect-ratio: 1; border-radius: 16px; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; cursor:pointer;
+    background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+    transition: all 0.2s; position:relative; overflow:hidden; font-size: 28px;
+  }
+  .plot:active { transform: scale(0.95); }
+  .plot.empty { border-style: dashed; opacity:0.7; }
+  .plot.growing { border-color: rgba(0,255,200,0.4); }
+  .plot.ready {
+    border-color: rgba(0,255,200,0.8);
+    box-shadow: 0 0 20px rgba(0,255,200,0.4), inset 0 0 20px rgba(0,255,200,0.1);
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 16px rgba(0,255,200,0.3);} 50%{box-shadow:0 0 28px rgba(0,255,200,0.7);} }
+  .plot .timer { font-size: 11px; color:#00ffc8; margin-top:4px; font-weight:600; }
+  .plot .name { font-size: 9px; color:#8892b0; margin-top:2px; }
+
+  /* LISTS (рынок, технологии) */
+  .card {
+    background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+    border-radius: 14px; padding: 14px; margin-bottom: 10px;
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+  }
+  .card .info { flex:1; }
+  .card .title { font-size: 14px; font-weight:600; margin-bottom:2px; }
+  .card .desc { font-size: 11px; color:#8892b0; }
+  .card .lvl { font-size: 10px; color:#00ffc8; margin-top:2px; }
+  .btn {
+    padding: 10px 14px; border-radius: 10px; border:none; font-weight:700; font-size:12px;
+    background: linear-gradient(135deg,#00ffc8,#00a0ff); color:#0a0e1a; cursor:pointer;
+    transition: all 0.2s; white-space:nowrap; min-width: 70px;
+  }
+  .btn:active { transform: scale(0.93); }
+  .btn:disabled { opacity:0.35; cursor:not-allowed; }
+  .btn.buy { background: linear-gradient(135deg,#a020ff,#ff00c8); color:white; }
+
+  /* STATS */
+  .statrow { display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:13px; }
+  .statrow span:last-child { color:#00ffc8; font-weight:700; }
+
+  h2 { font-size: 15px; margin-bottom: 10px; color:#00ffc8; text-shadow:0 0 10px rgba(0,255,200,0.3); }
+  .hint { font-size: 11px; color:#8892b0; text-align:center; margin: 8px 0; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 90px; left:50%; transform:translateX(-50%) translateY(20px);
+    background: rgba(0,255,200,0.15); border:1px solid rgba(0,255,200,0.5);
+    color:#00ffc8; padding: 10px 20px; border-radius: 30px; font-size: 13px; font-weight:600;
+    opacity: 0; transition: all 0.3s; pointer-events:none; backdrop-filter:blur(10px);
+    z-index: 100;
+  }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .energy { display:flex; align-items:center; gap:4px; font-size:12px; color:#ffcc00; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="stat"><span class="val" id="coins">100</span><span class="lbl">💰 Монеты</span></div>
+    <div class="stat"><span class="val" id="energy">10/10</span><span class="lbl">⚡ Энергия</span></div>
+    <div class="stat"><span class="val" id="level">1</span><span class="lbl">🏆 Уровень</span></div>
+  </div>
+
+  <!-- LEVEL BAR -->
+  <div class="levelbar">
+    <div class="info"><span>Прогресс уровня</span><span id="xpText">0 / 50</span></div>
+    <div class="bar"><div id="xpBar" style="width:0%"></div></div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" data-tab="farm">🌱 Ферма</div>
+    <div class="tab" data-tab="market">🛒 Рынок</div>
+    <div class="tab" data-tab="tech">🔬 Технологии</div>
+    <div class="tab" data-tab="stats">📊 Статистика</div>
+  </div>
+
+  <!-- FARM -->
+  <div class="panel active" id="farm">
+    <div class="hint">Нажми на грядку → посади → подожди → собери урожай</div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <!-- MARKET -->
+  <div class="panel" id="market">
+    <h2>🛒 Рынок семян</h2>
+    <div id="marketList"></div>
+  </div>
+
+  <!-- TECH -->
+  <div class="panel" id="tech">
+    <h2>🔬 Дерево технологий</h2>
+    <div id="techList"></div>
+  </div>
+
+  <!-- STATS -->
+  <div class="panel" id="stats">
+    <h2>📊 Статистика</h2>
+    <div class="statrow"><span>Всего собрано</span><span id="sHarvest">0</span></div>
+    <div class="statrow"><span>Всего заработано</span><span id="sEarn">0</span></div>
+    <div class="statrow"><span>Грядок</span><span id="sPlots">6</span></div>
+    <div class="statrow"><span>Уровень</span><span id="sLvl">1</span></div>
+    <div class="statrow"><span>Дроны-помощники</span><span id="sDrones">0</span></div>
+    <div class="statrow"><span>Множитель скорости</span><span id="sSpeed">x1.0</span></div>
+    <div class="statrow"><span>Множитель цены</span><span id="sPrice">x1.0</span></div>
+    <div class="hint" style="margin-top:20px;">Кибер-Ферма 2099 • v1.0</div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== СОСТОЯНИЕ =====
+const CROPS = {
+  wheat: { name:'Пшеница', icon:'🌾', grow:8,  price:12, cost:10,  xp:5  },
+  corn:  { name:'Кукуруза',icon:'🌽', grow:14, price:22, cost:20,  xp:9  },
+  berry: { name:'Нейроягода',icon:'🫐',grow:22, price:40, cost:40, xp:15 },
+  crystal:{name:'Кристалл',icon:'💎', grow:35, price:80, cost:80,  xp:26 },
+};
+const TECHS = {
+  speed: { name:'Ускоритель роста', icon:'⚡', desc:'+15% скорость роста', base:50, max:5, effect:0.15 },
+  price: { name:'Рыночный ИИ', icon:'📈', desc:'+10% цена продажи', base:60, max:5, effect:0.10 },
+  energy:{ name:'Реактор энергии', icon:'🔋', desc:'+2 макс. энергии', base:80, max:5, effect:2 },
+  plot:  { name:'Новая грядка', icon:'🧪', desc:'Открыть +1 грядку', base:100, max:3, effect:1 },
+  drone: { name:'Дрон-помощник', icon:'🤖', desc:'Авто-сбор урожая', base:150, max:3, effect:1 },
+};
+
+let S = {
+  coins: 100, energy: 10, maxEnergy: 10,
+  level: 1, xp: 0, xpMax: 50,
+  totalHarvest: 0, totalEarn: 0,
+  plots: [], // {crop, endTime, ready}
+  tech: { speed:0, price:0, energy:0, plot:0, drone:0 },
+  drones: 0,
+  lastEnergyRegen: Date.now(),
+};
+
+const PLOT_COUNT_BASE = 6;
+
+// ===== ИНИЦИАЛИЗАЦИЯ =====
+function initPlots() {
+  const count = PLOT_COUNT_BASE + S.tech.plot;
+  S.plots = [];
+  for (let i=0;i<count;i++) S.plots.push(null);
+}
+initPlots();
+
+// ===== УТИЛИТЫ =====
+function save() {
+  try { localStorage.setItem('cyberfarm', JSON.stringify(S)); } catch(e){}
+}
+function load() {
+  try {
+    const d = localStorage.getItem('cyberfarm');
+    if (d) { S = JSON.parse(d); if(!S.plots) initPlots(); }
+  } catch(e){ initPlots(); }
+}
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+function xpGain(n) {
+  S.xp += n;
+  while (S.xp >= S.xpMax) {
+    S.xp -= S.xpMax; S.level++; S.xpMax = Math.floor(S.xpMax*1.4);
+    toast('🏆 Уровень ' + S.level + '!');
+  }
+}
+function speedMult() { return 1 + S.tech.speed * TECHS.speed.effect; }
+function priceMult() { return 1 + S.tech.price * TECHS.price.effect; }
+function canAfford(c) { return S.coins >= c; }
+function spend(c) { if(!canAfford(c)) return false; S.coins -= c; return true; }
+
+// ===== ЭНЕРГИЯ =====
+function regenEnergy() {
+  const now = Date.now();
+  const elapsed = (now - S.lastEnergyRegen) / 1000;
+  const perEnergy = 20; // 1 энергия в 20 сек
+  if (elapsed >= perEnergy) {
+    const gain = Math.floor(elapsed / perEnergy);
+    S.energy = Math.min(S.maxEnergy, S.energy + gain);
+    S.lastEnergyRegen = now;
+  }
+}
+setInterval(()=>{ regenEnergy(); save(); render(); }, 1000);
+
+// ===== RENDER =====
+function render() {
+  // header
+  document.getElementById('coins').textContent = Math.floor(S.coins);
+  document.getElementById('energy').textContent = S.energy + '/' + S.maxEnergy;
+  document.getElementById('level').textContent = S.level;
+  document.getElementById('xpText').textContent = S.xp + ' / ' + S.xpMax;
+  document.getElementById('xpBar').style.width = (S.xp/S.xpMax*100) + '%';
+
+  // farm grid
+  const g = document.getElementById('grid');
+  g.innerHTML = '';
+  S.plots.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'plot';
+    if (!p) {
+      el.classList.add('empty');
+      el.innerHTML = '<div>➕</div>';
+      el.onclick = () => openPlantMenu(i);
+    } else {
+      const crop = CROPS[p.crop];
+      const left = Math.max(0, (p.endTime - Date.now())/1000);
+      if (left <= 0) {
+        el.classList.add('ready');
+        el.innerHTML = `<div>${crop.icon}</div><div class="timer">ГОТОВО</div>`;
+        el.onclick = () => harvest(i);
+      } else {
+        el.classList.add('growing');
+        el.innerHTML = `<div>${crop.icon}</div><div class="timer">${Math.ceil(left)}с</div><div class="name">${crop.name}</div>`;
+      }
+    }
+    g.appendChild(el);
+  });
+
+  // market
+  const m = document.getElementById('marketList');
+  m.innerHTML = '';
+  Object.entries(CROPS).forEach(([key, c]) => {
+    m.innerHTML += `<div class="card">
+      <div class="info">
+        <div class="title">${c.icon} ${c.name}</div>
+        <div class="desc">Рост: ${(c.grow/speedMult()).toFixed(1)}с • Цена: ${Math.floor(c.price*priceMult())}💰 • XP: ${c.xp}</div>
+      </div>
+      <button class="btn buy" onclick="plantCrop('${key}')" ${!canAfford(c.cost)?'disabled':''}>${c.cost}💰</button>
+    </div>`;
+  });
+
+  // tech
+  const tl = document.getElementById('techList');
+  tl.innerHTML = '';
+  Object.entries(TECHS).forEach(([key, t]) => {
+    const lvl = S.tech[key] || 0;
+    const cost = Math.floor(t.base * Math.pow(1.6, lvl));
+    const maxed = lvl >= t.max;
+    tl.innerHTML += `<div class="card">
+      <div class="info">
+        <div class="title">${t.icon} ${t.name}</div>
+        <div class="desc">${t.desc}</div>
+        <div class="lvl">Уровень ${lvl}/${t.max}</div>
+      </div>
+      <button class="btn ${maxed?'':''}" onclick="buyTech('${key}')" ${maxed||!canAfford(cost)?'disabled':''}>${maxed?'MAX':cost+'💰'}</button>
+    </div>`;
+  });
+
+  // stats
+  document.getElementById('sHarvest').textContent = S.totalHarvest;
+  document.getElementById('sEarn').textContent = Math.floor(S.totalEarn);
+  document.getElementById('sPlots').textContent = PLOT_COUNT_BASE + S.tech.plot;
+  document.getElementById('sLvl').textContent = S.level;
+  document.getElementById('sDrones').textContent = S.drones;
+  document.getElementById('sSpeed').textContent = 'x' + speedMult().toFixed(2);
+  document.getElementById('sPrice').textContent = 'x' + priceMult().toFixed(2);
+}
+
+// ===== ДЕЙСТВИЯ =====
+function openPlantMenu(i) {
+  const key = Object.keys(CROPS).find(k => canAfford(CROPS[k].cost));
+  if (!key) { toast('❌ Недостаточно монет!'); return; }
+  if (S.energy < 1) { toast('⚡ Нет энергии! Подожди.'); return; }
+  plant(i, key);
+}
+function plantCrop(key) {
+  const free = S.plots.findIndex(p => !p);
+  if (free === -1) { toast('❌ Нет свободных грядок!'); return; }
+  if (S.energy < 1) { toast('⚡ Нет энергии!'); return; }
+  if (!spend(CROPS[key].cost)) { toast('💰 Мало монет!'); return; }
+  plant(free, key);
+}
+function plant(i, key) {
+  if (!spend(CROPS[key].cost)) { toast('💰 Мало монет!'); return; }
+  S.energy--;
+  const growSec = CROPS[key].grow / speedMult();
+  S.plots[i] = { crop:key, endTime: Date.now() + growSec*1000 };
+  toast(`🌱 Посажено: ${CROPS[key].name}`);
+  save(); render();
+}
+function harvest(i) {
+  const p = S.plots[i];
+  if (!p) return;
+  const crop = CROPS[p.crop];
+  const earn = Math.floor(crop.price * priceMult());
+  S.coins += earn;
+  S.totalEarn += earn;
+  S.totalHarvest++;
+  xpGain(crop.xp);
+  S.plots[i] = null;
+  toast(`+${earn}💰 ${crop.name} собран!`);
+  save(); render();
+}
+function buyTech(key) {
+  const t = TECHS[key];
+  const lvl = S.tech[key] || 0;
+  if (lvl >= t.max) return;
+  const cost = Math.floor(t.base * Math.pow(1.6, lvl));
+  if (!spend(cost)) { toast('💰 Мало монет!'); return; }
+  S.tech[key] = lvl + 1;
+  if (key === 'energy') { S.maxEnergy += t.effect; S.energy += t.effect; }
+  if (key === 'plot') { S.plots.push(null); }
+  if (key === 'drone') { S.drones++; }
+  toast(`✅ ${t.name} → ур. ${lvl+1}`);
+  save(); render();
+}
+
+// ===== АВТО-СБОР ДРОНАМИ =====
+setInterval(() => {
+  if (S.drones > 0) {
+    let harvested = 0;
+    S.plots.forEach((p, i) => {
+      if (p && p.endTime <= Date.now() && harvested < S.drones) {
+        harvest(i); harvested++;
+      }
+    });
+    if (harvested) render();
+  }
+}, 3000);
+
+// ===== TABS =====
+document.querySelectorAll('.tab').forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.tab).classList.add('active');
+  };
+});
+
+// ===== СТАРТ =====
+load();
+render();
+setInterval(()=>{ regenEnergy(); render(); }, 500);
+</script>
+</body>
+                           </html>
