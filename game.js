@@ -20,6 +20,10 @@ let state = {
 const PRICES = { tree: 50, house: 150, farm: 300 };
 let selectedTool = null;
 
+// Загружаем картинку домика
+const imgHouse = new Image();
+imgHouse.src = 'house.png';
+
 // Настройка канваса
 function resize() {
   canvas.width = window.innerWidth;
@@ -30,7 +34,7 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 
-// Перевод координат (математика изометрии)
+// Перевод координат
 function isoToScreen(x, y) {
   return {
     x: (x - y) * (baseTileW / 2) * zoom + panX,
@@ -112,32 +116,24 @@ function drawTree(x, y, w, h) {
 }
 
 function drawHouse(x, y, w, h) {
-  const wallH = h * 1.5;
+  // Тень под домиком
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.beginPath(); ctx.ellipse(x, y + h/2, w*0.5, h*0.25, 0, 0, Math.PI*2); ctx.fill();
-
-  // Левая стена
-  ctx.fillStyle = '#F5DEB3';
-  ctx.beginPath();
-  ctx.moveTo(x - w/2, y + h/2); ctx.lineTo(x, y + h);
-  ctx.lineTo(x, y + h - wallH); ctx.lineTo(x - w/2, y + h/2 - wallH);
+  ctx.beginPath(); 
+  ctx.ellipse(x, y + h/2, w*0.5, h*0.25, 0, 0, Math.PI*2); 
   ctx.fill();
 
-  // Правая стена
-  ctx.fillStyle = '#DEB887';
-  ctx.beginPath();
-  ctx.moveTo(x + w/2, y + h/2); ctx.lineTo(x, y + h);
-  ctx.lineTo(x, y + h - wallH); ctx.lineTo(x + w/2, y + h/2 - wallH);
-  ctx.fill();
-
-  // Крыша
-  ctx.fillStyle = '#B22222';
-  ctx.beginPath();
-  ctx.moveTo(x, y - h*0.5); 
-  ctx.lineTo(x - w/2 - w*0.1, y + h/2 - wallH);
-  ctx.lineTo(x, y + h - wallH);
-  ctx.lineTo(x + w/2 + w*0.1, y + h/2 - wallH);
-  ctx.fill();
+  // Рисуем картинку, если она загрузилась
+  if (imgHouse.complete && imgHouse.naturalWidth > 0) {
+    // Настраиваем размер и позицию так, чтобы домик ровно стоял на клетке
+    const imgW = w * 1.4; // Чуть увеличиваем картинку
+    const imgH = imgW;    // Квадратная картинка
+    // Сдвигаем влево вверх, чтобы центр домика совпал с центром клетки
+    ctx.drawImage(imgHouse, x - imgW/2, y + h/2 - imgH*0.75, imgW, imgH);
+  } else {
+    // Пока грузится - заглушка (серый квадрат)
+    ctx.fillStyle = '#ccc';
+    ctx.fillRect(x - w/2, y - h/2, w, h);
+  }
 }
 
 function drawFarm(x, y, w, h) {
