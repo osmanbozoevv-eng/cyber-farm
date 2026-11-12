@@ -9,7 +9,6 @@
   body { background: #87CEEB; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; height: 100vh; }
   canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
-  /* ВЕРХНИЙ UI */
   .top-ui {
     position: absolute; top: 15px; left: 15px; right: 15px;
     display: flex; justify-content: space-between; pointer-events: none; z-index: 10;
@@ -23,7 +22,6 @@
   .res-panel span { color: #f59e0b; }
   .res-panel .energy { color: #8b5cf6; }
 
-  /* КНОПКИ ЗУМА */
   .zoom-controls {
     position: absolute; right: 15px; top: 70px; display: flex; flex-direction: column; gap: 10px; z-index: 10;
   }
@@ -35,7 +33,6 @@
   }
   .zoom-btn:active { background: #e2e8f0; }
 
-  /* НИЖНИЙ UI */
   .bottom-ui {
     position: absolute; bottom: 0; left: 0; right: 0;
     background: #f8fafc; border-top: 2px solid #e2e8f0;
@@ -112,9 +109,11 @@
   const PRICES = { tree: 50, house: 150, farm: 300 };
   let selectedTool = null;
 
-  // Загружаем картинку домика (она лежит в этом же репозитории)
+  // Картинка домика загружается ПРЯМО ИЗ ИНТЕРНЕТА (не нужен файл)
   const imgHouse = new Image();
-  imgHouse.src = 'house.png';
+  imgHouse.src = 'https://i.ibb.co/3s6Gz3B/house.png';
+  // Кросс-доменные настройки для безопасности
+  imgHouse.crossOrigin = "Anonymous";
 
   function resize() {
     canvas.width = window.innerWidth;
