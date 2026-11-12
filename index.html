@@ -3,351 +3,50 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Моя Изометрическая Ферма</title>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
-  body { 
-    background: #7ec850; /* Цвет травы, если канвас не загрузится */
-    font-family: 'Segoe UI', system-ui, sans-serif; 
-    overflow: hidden; height: 100vh; 
-  }
-  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-
-  /* ВЕРХНИЙ UI */
-  .top-ui {
-    position: absolute; top: 15px; left: 15px; right: 15px;
-    display: flex; justify-content: space-between; pointer-events: none;
-  }
-  .res-panel {
-    background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 20px;
-    color: white; font-weight: bold; font-size: 16px;
-    border: 2px solid rgba(255,255,255,0.2); backdrop-filter: blur(4px);
-    display: flex; gap: 15px; pointer-events: auto;
-  }
-  .res-panel span { color: #fbbf24; }
-
-  /* НИЖНИЙ UI (МАГАЗИН) */
-  .bottom-ui {
-    position: absolute; bottom: 0; left: 0; right: 0;
-    background: rgba(255,255,255,0.9); 
-    border-top-left-radius: 24px; border-top-right-radius: 24px;
-    padding: 15px; display: flex; justify-content: space-around;
-    box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
-  }
-  .shop-btn {
-    display: flex; flex-direction: column; align-items: center;
-    background: white; border: 2px solid #e2e8f0; border-radius: 16px;
-    padding: 10px; width: 30%; cursor: pointer; transition: all 0.1s;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-  }
-  .shop-btn:active { transform: scale(0.95); }
-  .shop-btn.active { border-color: #3b82f6; background: #eff6ff; box-shadow: 0 0 15px rgba(59,130,246,0.3); }
-  .shop-btn .icon { font-size: 28px; margin-bottom: 5px; }
-  .shop-btn .name { font-size: 12px; font-weight: bold; color: #1e293b; }
-  .shop-btn .cost { font-size: 12px; color: #f59e0b; font-weight: bold; margin-top: 2px; }
-
-  /* ТОСТ (УВЕДОМЛЕНИЕ) */
-  #toast {
-    position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
-    background: rgba(0,0,0,0.8); color: white; padding: 10px 20px;
-    border-radius: 20px; font-weight: bold; font-size: 14px;
-    opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100;
-  }
-</style>
+<title>Моя Ферма</title>
+<!-- Подключаем стили -->
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <canvas id="gameCanvas"></canvas>
 
-  <!-- Верхняя панель ресурсов -->
+  <!-- Верхняя панель -->
   <div class="top-ui">
     <div class="res-panel">
       <div>💰 <span id="ui-coins">1000</span></div>
-      <div>⚡ <span id="ui-energy">20</span></div>
+      <div>⚡ <span class="energy" id="ui-energy">20</span></div>
     </div>
   </div>
 
-  <!-- Нижняя панель строительства -->
+  <!-- Управление зумом -->
+  <div class="zoom-controls">
+    <div class="zoom-btn" onclick="changeZoom(0.2)">+</div>
+    <div class="zoom-btn" onclick="changeZoom(-0.2)">-</div>
+  </div>
+
+  <!-- Нижняя панель (Магазин) -->
   <div class="bottom-ui">
-    <div class="shop-btn" onclick="selectBuild('house')" id="btn-house">
-      <div class="icon">🏠</div>
-      <div class="name">Дом</div>
-      <div class="cost">100 💰</div>
-    </div>
-    <div class="shop-btn" onclick="selectBuild('farm')" id="btn-farm">
-      <div class="icon">🌾</div>
-      <div class="name">Ферма</div>
-      <div class="cost">200 💰</div>
-    </div>
     <div class="shop-btn" onclick="selectBuild('tree')" id="btn-tree">
       <div class="icon">🌳</div>
       <div class="name">Дерево</div>
       <div class="cost">50 💰</div>
     </div>
+    <div class="shop-btn" onclick="selectBuild('house')" id="btn-house">
+      <div class="icon">🏠</div>
+      <div class="name">Дом</div>
+      <div class="cost">150 💰</div>
+    </div>
+    <div class="shop-btn" onclick="selectBuild('farm')" id="btn-farm">
+      <div class="icon">🌾</div>
+      <div class="name">Ферма</div>
+      <div class="cost">300 💰</div>
+    </div>
   </div>
 
   <div id="toast"></div>
 
-<script>
-  // --- НАСТРОЙКИ ИЗОМЕТРИИ ---
-  const canvas = document.getElementById('gameCanvas');
-  const ctx = canvas.getContext('2d');
-  
-  const tileW = 64; 
-  const tileH = 32;
-  const gridSize = 10;
-
-  let offsetX = 0;
-  let offsetY = 0;
-
-  // Состояние игры
-  let state = {
-    coins: 1000,
-    energy: 20,
-    map: {} // Формат: "x,y": { type: 'house' }
-  };
-
-  const PRICES = {
-    house: 100,
-    farm: 200,
-    tree: 50
-  };
-
-  let selectedTool = null;
-
-  // --- ИНИЦИАЛИЗАЦИЯ КАНВАСА ---
-  function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    // Центрируем карту
-    offsetX = canvas.width / 2;
-    offsetY = canvas.height / 2 - (gridSize * tileH) / 2 - 50;
-    draw();
-  }
-  window.addEventListener('resize', resize);
-
-  // --- МАТЕМАТИКА ИЗОМЕТРИИ ---
-  function isoToScreen(x, y) {
-    return {
-      x: (x - y) * (tileW / 2) + offsetX,
-      y: (x + y) * (tileH / 2) + offsetY
-    };
-  }
-
-  function screenToIso(screenX, screenY) {
-    let sx = screenX - offsetX;
-    let sy = screenY - offsetY;
-    let x = (sx / (tileW / 2) + sy / (tileH / 2)) / 2;
-    let y = (sy / (tileH / 2) - sx / (tileW / 2)) / 2;
-    return { x: Math.floor(x), y: Math.floor(y) };
-  }
-
-  // --- ОТРИСОВКА ---
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // 1. Рисуем землю (клетки)
-    for (let x = 0; x < gridSize; x++) {
-      for (let y = 0; y < gridSize; y++) {
-        const pos = isoToScreen(x, y);
-        
-        // Чередование цвета травы
-        ctx.fillStyle = (x + y) % 2 === 0 ? '#8ed963' : '#82cc58';
-        ctx.strokeStyle = '#74b84e';
-        ctx.lineWidth = 1;
-
-        ctx.beginPath();
-        ctx.moveTo(pos.x, pos.y);
-        ctx.lineTo(pos.x + tileW / 2, pos.y + tileH / 2);
-        ctx.lineTo(pos.x, pos.y + tileH);
-        ctx.lineTo(pos.x - tileW / 2, pos.y + tileH / 2);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-      }
-    }
-
-    // 2. Рисуем здания и деревья (сортировка по глубине)
-    const sortedCells = Object.keys(state.map).sort((a, b) => {
-      const [ax, ay] = a.split(',').map(Number);
-      const [bx, by] = b.split(',').map(Number);
-      return (ax + ay) - (bx + by);
-    });
-
-    sortedCells.forEach(key => {
-      const [x, y] = key.split(',').map(Number);
-      const item = state.map[key];
-      const pos = isoToScreen(x, y);
-      
-      if (item.type === 'tree') {
-        drawTree(pos.x, pos.y);
-      } else if (item.type === 'house') {
-        drawHouse(pos.x, pos.y);
-      } else if (item.type === 'farm') {
-        drawFarm(pos.x, pos.y);
-      }
-    });
-  }
-
-  // --- РИСОВАНИЕ ОБЪЕКТОВ (Векторная графика) ---
-  function drawTree(x, y) {
-    // Тень
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
-    ctx.beginPath();
-    ctx.ellipse(x, y + tileH/2, 20, 10, 0, 0, Math.PI*2);
-    ctx.fill();
-
-    // Ствол
-    ctx.fillStyle = '#8b5a2b';
-    ctx.fillRect(x - 4, y - 10, 8, 20);
-
-    // Листва (Круги)
-    ctx.fillStyle = '#2e8b57';
-    ctx.beginPath(); ctx.arc(x, y - 20, 18, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#3cb371';
-    ctx.beginPath(); ctx.arc(x - 10, y - 15, 14, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(x + 10, y - 15, 14, 0, Math.PI*2); ctx.fill();
-  }
-
-  function drawHouse(x, y) {
-    const w = tileW * 0.8;
-    const h = 30; // Высота стен
-
-    // Тень
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
-    ctx.beginPath();
-    ctx.ellipse(x, y + tileH/2, 30, 15, 0, 0, Math.PI*2);
-    ctx.fill();
-
-    // Левая стена
-    ctx.fillStyle = '#f87171';
-    ctx.beginPath();
-    ctx.moveTo(x - w/2, y + tileH/2);
-    ctx.lineTo(x, y + tileH);
-    ctx.lineTo(x, y + tileH - h);
-    ctx.lineTo(x - w/2, y + tileH/2 - h);
-    ctx.fill();
-
-    // Правая стена
-    ctx.fillStyle = '#ef4444';
-    ctx.beginPath();
-    ctx.moveTo(x + w/2, y + tileH/2);
-    ctx.lineTo(x, y + tileH);
-    ctx.lineTo(x, y + tileH - h);
-    ctx.lineTo(x + w/2, y + tileH/2 - h);
-    ctx.fill();
-
-    // Крыша
-    ctx.fillStyle = '#7f1d1d';
-    ctx.beginPath();
-    ctx.moveTo(x, y - 15); // Верхушка
-    ctx.lineTo(x - w/2 - 5, y + tileH/2 - h);
-    ctx.lineTo(x, y + tileH - h);
-    ctx.lineTo(x + w/2 + 5, y + tileH/2 - h);
-    ctx.fill();
-
-    // Окно
-    ctx.fillStyle = '#fef08a';
-    ctx.fillRect(x - 5, y + tileH/2 - h/2, 10, 10);
-  }
-
-  function drawFarm(x, y) {
-    const w = tileW * 0.9;
-    
-    // Тень
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
-    ctx.beginPath();
-    ctx.ellipse(x, y + tileH/2, 35, 15, 0, 0, Math.PI*2);
-    ctx.fill();
-
-    // Грядки (полосы)
-    ctx.fillStyle = '#a16207';
-    ctx.beginPath();
-    ctx.moveTo(x - w/2, y + tileH/2);
-    ctx.lineTo(x, y + tileH);
-    ctx.lineTo(x + w/2, y + tileH/2);
-    ctx.lineTo(x, y);
-    ctx.fill();
-
-    // Зелень
-    ctx.fillStyle = '#22c55e';
-    ctx.fillRect(x - 15, y + 5, 5, 10);
-    ctx.fillRect(x - 5, y + 10, 5, 10);
-    ctx.fillRect(x + 5, y + 15, 5, 10);
-  }
-
-  // --- ВЗАИМОДЕЙСТВИЕ ---
-  canvas.addEventListener('pointerdown', (e) => {
-    if (!selectedTool) {
-      showToast('👆 Сначала выбери здание внизу!');
-      return;
-    }
-
-    const rect = canvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-
-    const gridPos = screenToIso(clickX, clickY);
-
-    // Проверяем границы
-    if (gridPos.x >= 0 && gridPos.x < gridSize && gridPos.y >= 0 && gridPos.y < gridSize) {
-      const key = `${gridPos.x},${gridPos.y}`;
-      
-      if (state.map[key]) {
-        showToast('❌ Здесь уже занято!');
-        return;
-      }
-
-      const price = PRICES[selectedTool];
-      if (state.coins < price) {
-        showToast('❌ Не хватает монет!');
-        return;
-      }
-
-      // Строим!
-      state.coins -= price;
-      state.map[key] = { type: selectedTool };
-      
-      updateUI();
-      draw();
-      
-      // Автоматически снимаем выделение, чтобы строить по одному
-      selectedTool = null;
-      document.querySelectorAll('.shop-btn').forEach(btn => btn.classList.remove('active'));
-    }
-  });
-
-  // --- UI И УВЕДОМЛЕНИЯ ---
-  function selectBuild(type) {
-    selectedTool = type;
-    document.querySelectorAll('.shop-btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(`btn-${type}`).classList.add('active');
-    showToast('Выбери место на карте!');
-  }
-
-  function updateUI() {
-    document.getElementById('ui-coins').textContent = state.coins;
-    document.getElementById('ui-energy').textContent = state.energy;
-  }
-
-  let toastTimeout;
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.style.opacity = '1';
-    clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => { t.style.opacity = '0'; }, 2000);
-  }
-
-  // --- СТАРТ ---
-  resize();
-  updateUI();
-  
-  // Добавим пару деревьев для красоты при старте
-  state.map['2,2'] = { type: 'tree' };
-  state.map['7,7'] = { type: 'tree' };
-  state.map['5,2'] = { type: 'tree' };
-  draw();
-</script>
+  <!-- Подключаем логику -->
+  <script src="game.js"></script>
 </body>
 </html>
