@@ -3,474 +3,351 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Кибер-Таун 2099</title>
+<title>Моя Изометрическая Ферма</title>
 <style>
-  :root {
-    --bg: #0f172a;
-    --panel: rgba(30, 41, 59, 0.85);
-    --accent: #38bdf8;
-    --gold: #fbbf24;
-    --text: #f1f5f9;
-  }
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
-  body {
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    background: radial-gradient(circle at center, #1e293b, var(--bg));
-    color: var(--text);
-    height: 100vh; overflow: hidden;
-    display: flex; flex-direction: column;
+  body { 
+    background: #7ec850; /* Цвет травы, если канвас не загрузится */
+    font-family: 'Segoe UI', system-ui, sans-serif; 
+    overflow: hidden; height: 100vh; 
   }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
-  /* ВЕРХНЯЯ ПАНЕЛЬ */
-  .top-bar {
-    position: absolute; top: 10px; left: 10px; right: 10px;
-    display: flex; justify-content: space-between; align-items: flex-start;
-    z-index: 100; pointer-events: none;
+  /* ВЕРХНИЙ UI */
+  .top-ui {
+    position: absolute; top: 15px; left: 15px; right: 15px;
+    display: flex; justify-content: space-between; pointer-events: none;
   }
-  .resources {
-    display: flex; gap: 8px; pointer-events: auto;
+  .res-panel {
+    background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 20px;
+    color: white; font-weight: bold; font-size: 16px;
+    border: 2px solid rgba(255,255,255,0.2); backdrop-filter: blur(4px);
+    display: flex; gap: 15px; pointer-events: auto;
   }
-  .res {
-    background: var(--panel); padding: 8px 14px; border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 6px;
-    font-weight: bold; font-size: 14px; backdrop-filter: blur(8px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer;
-  }
-  .res:active { transform: scale(0.95); }
-  .res.gold span:last-child { color: var(--gold); }
-  .res.energy span:last-child { color: #a78bfa; }
+  .res-panel span { color: #fbbf24; }
 
-  .level-badge {
-    background: linear-gradient(135deg, #38bdf8, #818cf8);
-    padding: 8px 16px; border-radius: 20px; font-weight: bold;
-    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4); pointer-events: auto;
+  /* НИЖНИЙ UI (МАГАЗИН) */
+  .bottom-ui {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(255,255,255,0.9); 
+    border-top-left-radius: 24px; border-top-right-radius: 24px;
+    padding: 15px; display: flex; justify-content: space-around;
+    box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
   }
+  .shop-btn {
+    display: flex; flex-direction: column; align-items: center;
+    background: white; border: 2px solid #e2e8f0; border-radius: 16px;
+    padding: 10px; width: 30%; cursor: pointer; transition: all 0.1s;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  }
+  .shop-btn:active { transform: scale(0.95); }
+  .shop-btn.active { border-color: #3b82f6; background: #eff6ff; box-shadow: 0 0 15px rgba(59,130,246,0.3); }
+  .shop-btn .icon { font-size: 28px; margin-bottom: 5px; }
+  .shop-btn .name { font-size: 12px; font-weight: bold; color: #1e293b; }
+  .shop-btn .cost { font-size: 12px; color: #f59e0b; font-weight: bold; margin-top: 2px; }
 
-  /* ИЗОМЕТРИЧЕСКОЕ ПОЛЕ */
-  .game-area {
-    flex: 1; position: relative; overflow: hidden;
-    display: flex; justify-content: center; align-items: center;
-    perspective: 1200px;
-  }
-  .grid-container {
-    transform: rotateX(60deg) rotateZ(45deg);
-    transform-style: preserve-3d;
-    display: grid;
-    grid-template-columns: repeat(6, 60px);
-    grid-template-rows: repeat(6, 60px);
-    gap: 4px;
-    transition: transform 0.3s;
-  }
-  
-  /* КЛЕТКА */
-  .cell {
-    width: 60px; height: 60px;
-    background: rgba(56, 189, 248, 0.05);
-    border: 1px solid rgba(56, 189, 248, 0.2);
-    border-radius: 8px; position: relative;
-    transform-style: preserve-3d; cursor: pointer;
-    transition: all 0.2s;
-  }
-  .cell:hover { background: rgba(56, 189, 248, 0.15); }
-  .cell.empty::after {
-    content: '+'; position: absolute; inset: 0;
-    display: flex; justify-content: center; align-items: center;
-    font-size: 24px; color: rgba(56, 189, 248, 0.3);
-    transform: rotateZ(-45deg) rotateX(-60deg);
-  }
-
-  /* 3D ЗДАНИЯ (рисуем через CSS) */
-  .building {
-    position: absolute; bottom: 0; left: 0;
-    width: 100%; height: 100%;
-    transform-style: preserve-3d;
-    pointer-events: none;
-  }
-  
-  .building .face {
-    position: absolute; border-radius: 4px;
-    border: 1px solid rgba(255,255,255,0.1);
-  }
-  /* Крыша */
-  .building .roof {
-    width: 60px; height: 60px; background: #38bdf8;
-    transform: translateZ(var(--h));
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
-  }
-  /* Стены */
-  .building .wall-left {
-    width: 60px; height: var(--h); background: #1e40af;
-    transform: rotateY(-90deg) translateZ(30px);
-    transform-origin: left;
-  }
-  .building .wall-right {
-    width: 60px; height: var(--h); background: #1e3a8a;
-    transform: rotateX(-90deg) translateZ(30px);
-    transform-origin: bottom;
-  }
-  
-  /* Разные типы зданий (цвета) */
-  .building.farm .roof { background: #10b981; box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.5); }
-  .building.farm .wall-left { background: #047857; }
-  .building.farm .wall-right { background: #065f46; }
-
-  .building.house .roof { background: #f43f5e; box-shadow: inset 0 0 20px rgba(244, 63, 94, 0.5); }
-  .building.house .wall-left { background: #be123c; }
-  .building.house .wall-right { background: #9f1239; }
-
-  .building.factory .roof { background: #f59e0b; box-shadow: inset 0 0 20px rgba(245, 158, 11, 0.5); }
-  .building.factory .wall-left { background: #b45309; }
-  .building.factory .wall-right { background: #92400e; }
-
-  /* Иконка над зданием */
-  .bubble {
-    position: absolute; top: -30px; left: 50%;
-    transform: translateX(-50%) rotateZ(-45deg) rotateX(-60deg);
-    background: white; color: black; font-size: 16px;
-    width: 28px; height: 28px; border-radius: 50%;
-    display: flex; justify-content: center; align-items: center;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-    animation: float 2s infinite ease-in-out;
-    pointer-events: auto; cursor: pointer;
-  }
-  @keyframes float {
-    0%, 100% { transform: translateX(-50%) translateY(0) rotateZ(-45deg) rotateX(-60deg); }
-    50% { transform: translateX(-50%) translateY(-5px) rotateZ(-45deg) rotateX(-60deg); }
-  }
-
-  /* НИЖНЕЕ МЕНЮ (ВКЛАДКИ) */
-  .bottom-menu {
-    position: absolute; bottom: 20px; left: 10px; right: 10px;
-    display: flex; gap: 10px; z-index: 100;
-  }
-  .menu-btn {
-    flex: 1; background: var(--panel); border: 1px solid rgba(255,255,255,0.1);
-    padding: 12px 0; border-radius: 16px; text-align: center;
-    font-size: 12px; font-weight: 600; color: #94a3b8;
-    backdrop-filter: blur(10px); cursor: pointer; transition: all 0.2s;
-  }
-  .menu-btn.active {
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(129, 140, 248, 0.2));
-    border-color: var(--accent); color: var(--accent);
-    box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
-  }
-  .menu-btn span { display: block; font-size: 20px; margin-bottom: 4px; }
-
-  /* ВСПЛЫВАЮЩЕЕ ОКНО (Магазин) */
-  .modal {
-    position: absolute; inset: 0; background: rgba(0,0,0,0.6);
-    display: none; justify-content: center; align-items: flex-end;
-    z-index: 200; backdrop-filter: blur(4px);
-  }
-  .modal.active { display: flex; }
-  .modal-content {
-    background: #1e293b; width: 100%; max-width: 500px;
-    border-radius: 24px 24px 0 0; padding: 20px;
-    border-top: 2px solid var(--accent);
-    animation: slideUp 0.3s ease-out; padding-bottom: 40px;
-  }
-  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-  .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; display: flex; justify-content: space-between; }
-  .close-btn { color: #ef4444; cursor: pointer; font-size: 24px; }
-  
-  .shop-item {
-    display: flex; justify-content: space-between; align-items: center;
-    background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; margin-bottom: 10px;
-  }
-  .shop-item .info { display: flex; align-items: center; gap: 12px; }
-  .shop-icon { font-size: 24px; }
-  .buy-btn {
-    background: var(--accent); color: #000; border: none;
-    padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer;
-  }
-  .buy-btn:disabled { opacity: 0.5; background: #64748b; color: #fff; }
-
-  /* Кнопка сброса */
-  .reset-btn {
-    position: absolute; top: 10px; right: 10px;
-    background: rgba(239, 68, 68, 0.2); color: #ef4444;
-    border: 1px solid #ef4444; padding: 6px 12px; border-radius: 8px;
-    font-size: 12px; font-weight: bold; z-index: 100;
+  /* ТОСТ (УВЕДОМЛЕНИЕ) */
+  #toast {
+    position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.8); color: white; padding: 10px 20px;
+    border-radius: 20px; font-weight: bold; font-size: 14px;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100;
   }
 </style>
 </head>
 <body>
 
-  <!-- Верхняя панель -->
-  <div class="top-bar">
-    <div class="resources">
-      <div class="res gold"><span>💰</span><span id="ui-coins">1000</span></div>
-      <div class="res energy"><span>⚡</span><span id="ui-energy">50</span></div>
-    </div>
-    <div class="level-badge">LVL <span id="ui-level">1</span></div>
-  </div>
+  <canvas id="gameCanvas"></canvas>
 
-  <!-- Игровое поле -->
-  <div class="game-area">
-    <div class="grid-container" id="grid">
-      <!-- Сетка генерируется в JS -->
+  <!-- Верхняя панель ресурсов -->
+  <div class="top-ui">
+    <div class="res-panel">
+      <div>💰 <span id="ui-coins">1000</span></div>
+      <div>⚡ <span id="ui-energy">20</span></div>
     </div>
   </div>
 
-  <!-- Нижнее меню -->
-  <div class="bottom-menu">
-    <div class="menu-btn active" data-tab="build" onclick="openTab('build')">
-      <span>🏗️</span> Строить
+  <!-- Нижняя панель строительства -->
+  <div class="bottom-ui">
+    <div class="shop-btn" onclick="selectBuild('house')" id="btn-house">
+      <div class="icon">🏠</div>
+      <div class="name">Дом</div>
+      <div class="cost">100 💰</div>
     </div>
-    <div class="menu-btn" data-tab="market" onclick="openTab('market')">
-      <span>🛒</span> Рынок
+    <div class="shop-btn" onclick="selectBuild('farm')" id="btn-farm">
+      <div class="icon">🌾</div>
+      <div class="name">Ферма</div>
+      <div class="cost">200 💰</div>
     </div>
-    <div class="menu-btn" data-tab="quests" onclick="openTab('quests')">
-      <span>📜</span> Квесты
+    <div class="shop-btn" onclick="selectBuild('tree')" id="btn-tree">
+      <div class="icon">🌳</div>
+      <div class="name">Дерево</div>
+      <div class="cost">50 💰</div>
     </div>
   </div>
 
-  <!-- Модальное окно магазина -->
-  <div class="modal" id="modal">
-    <div class="modal-content">
-      <div class="modal-title">
-        <span id="modal-title-text">Магазин</span>
-        <span class="close-btn" onclick="closeModal()">×</span>
-      </div>
-      <div id="modal-body">
-        <!-- Контент генерируется в JS -->
-      </div>
-    </div>
-  </div>
+  <div id="toast"></div>
 
 <script>
-  // --- СОСТОЯНИЕ ИГРЫ ---
+  // --- НАСТРОЙКИ ИЗОМЕТРИИ ---
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  
+  const tileW = 64; 
+  const tileH = 32;
+  const gridSize = 10;
+
+  let offsetX = 0;
+  let offsetY = 0;
+
+  // Состояние игры
   let state = {
     coins: 1000,
-    energy: 50,
-    maxEnergy: 50,
-    level: 1,
-    buildings: {}, // { "x,y": { type: 'house', readyTime: 0 } }
+    energy: 20,
+    map: {} // Формат: "x,y": { type: 'house' }
   };
 
-  // Типы зданий
-  const BUILDINGS = {
-    farm: { name: 'Ферма', cost: 100, icon: '🌾', income: 10, time: 5000, class: 'farm' },
-    house: { name: 'Дом', cost: 300, icon: '🏠', income: 30, time: 10000, class: 'house' },
-    factory: { name: 'Завод', cost: 800, icon: '🏭', income: 100, time: 20000, class: 'factory' }
+  const PRICES = {
+    house: 100,
+    farm: 200,
+    tree: 50
   };
 
-  const GRID_SIZE = 6;
-  let buildMode = null; // Тип здания, которое сейчас строим
+  let selectedTool = null;
 
-  // --- ИНИЦИАЛИЗАЦИЯ СЕТКИ ---
-  function initGrid() {
-    const grid = document.getElementById('grid');
-    grid.innerHTML = '';
-    for (let y = 0; y < GRID_SIZE; y++) {
-      for (let x = 0; x < GRID_SIZE; x++) {
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        cell.dataset.x = x;
-        cell.dataset.y = y;
-        cell.onclick = () => handleCellClick(x, y);
-        grid.appendChild(cell);
-      }
-    }
-    renderBuildings();
+  // --- ИНИЦИАЛИЗАЦИЯ КАНВАСА ---
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    // Центрируем карту
+    offsetX = canvas.width / 2;
+    offsetY = canvas.height / 2 - (gridSize * tileH) / 2 - 50;
+    draw();
+  }
+  window.addEventListener('resize', resize);
+
+  // --- МАТЕМАТИКА ИЗОМЕТРИИ ---
+  function isoToScreen(x, y) {
+    return {
+      x: (x - y) * (tileW / 2) + offsetX,
+      y: (x + y) * (tileH / 2) + offsetY
+    };
   }
 
-  // --- КЛИК ПО КЛЕТКЕ ---
-  function handleCellClick(x, y) {
-    const key = `${x},${y}`;
+  function screenToIso(screenX, screenY) {
+    let sx = screenX - offsetX;
+    let sy = screenY - offsetY;
+    let x = (sx / (tileW / 2) + sy / (tileH / 2)) / 2;
+    let y = (sy / (tileH / 2) - sx / (tileW / 2)) / 2;
+    return { x: Math.floor(x), y: Math.floor(y) };
+  }
+
+  // --- ОТРИСОВКА ---
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 1. Рисуем землю (клетки)
+    for (let x = 0; x < gridSize; x++) {
+      for (let y = 0; y < gridSize; y++) {
+        const pos = isoToScreen(x, y);
+        
+        // Чередование цвета травы
+        ctx.fillStyle = (x + y) % 2 === 0 ? '#8ed963' : '#82cc58';
+        ctx.strokeStyle = '#74b84e';
+        ctx.lineWidth = 1;
+
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+        ctx.lineTo(pos.x + tileW / 2, pos.y + tileH / 2);
+        ctx.lineTo(pos.x, pos.y + tileH);
+        ctx.lineTo(pos.x - tileW / 2, pos.y + tileH / 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+
+    // 2. Рисуем здания и деревья (сортировка по глубине)
+    const sortedCells = Object.keys(state.map).sort((a, b) => {
+      const [ax, ay] = a.split(',').map(Number);
+      const [bx, by] = b.split(',').map(Number);
+      return (ax + ay) - (bx + by);
+    });
+
+    sortedCells.forEach(key => {
+      const [x, y] = key.split(',').map(Number);
+      const item = state.map[key];
+      const pos = isoToScreen(x, y);
+      
+      if (item.type === 'tree') {
+        drawTree(pos.x, pos.y);
+      } else if (item.type === 'house') {
+        drawHouse(pos.x, pos.y);
+      } else if (item.type === 'farm') {
+        drawFarm(pos.x, pos.y);
+      }
+    });
+  }
+
+  // --- РИСОВАНИЕ ОБЪЕКТОВ (Векторная графика) ---
+  function drawTree(x, y) {
+    // Тень
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + tileH/2, 20, 10, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Ствол
+    ctx.fillStyle = '#8b5a2b';
+    ctx.fillRect(x - 4, y - 10, 8, 20);
+
+    // Листва (Круги)
+    ctx.fillStyle = '#2e8b57';
+    ctx.beginPath(); ctx.arc(x, y - 20, 18, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#3cb371';
+    ctx.beginPath(); ctx.arc(x - 10, y - 15, 14, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + 10, y - 15, 14, 0, Math.PI*2); ctx.fill();
+  }
+
+  function drawHouse(x, y) {
+    const w = tileW * 0.8;
+    const h = 30; // Высота стен
+
+    // Тень
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + tileH/2, 30, 15, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Левая стена
+    ctx.fillStyle = '#f87171';
+    ctx.beginPath();
+    ctx.moveTo(x - w/2, y + tileH/2);
+    ctx.lineTo(x, y + tileH);
+    ctx.lineTo(x, y + tileH - h);
+    ctx.lineTo(x - w/2, y + tileH/2 - h);
+    ctx.fill();
+
+    // Правая стена
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.moveTo(x + w/2, y + tileH/2);
+    ctx.lineTo(x, y + tileH);
+    ctx.lineTo(x, y + tileH - h);
+    ctx.lineTo(x + w/2, y + tileH/2 - h);
+    ctx.fill();
+
+    // Крыша
+    ctx.fillStyle = '#7f1d1d';
+    ctx.beginPath();
+    ctx.moveTo(x, y - 15); // Верхушка
+    ctx.lineTo(x - w/2 - 5, y + tileH/2 - h);
+    ctx.lineTo(x, y + tileH - h);
+    ctx.lineTo(x + w/2 + 5, y + tileH/2 - h);
+    ctx.fill();
+
+    // Окно
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(x - 5, y + tileH/2 - h/2, 10, 10);
+  }
+
+  function drawFarm(x, y) {
+    const w = tileW * 0.9;
     
-    // Если в режиме строительства
-    if (buildMode) {
-      if (state.buildings[key]) {
-        showToast('❌ Здесь уже есть здание!');
+    // Тень
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + tileH/2, 35, 15, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Грядки (полосы)
+    ctx.fillStyle = '#a16207';
+    ctx.beginPath();
+    ctx.moveTo(x - w/2, y + tileH/2);
+    ctx.lineTo(x, y + tileH);
+    ctx.lineTo(x + w/2, y + tileH/2);
+    ctx.lineTo(x, y);
+    ctx.fill();
+
+    // Зелень
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(x - 15, y + 5, 5, 10);
+    ctx.fillRect(x - 5, y + 10, 5, 10);
+    ctx.fillRect(x + 5, y + 15, 5, 10);
+  }
+
+  // --- ВЗАИМОДЕЙСТВИЕ ---
+  canvas.addEventListener('pointerdown', (e) => {
+    if (!selectedTool) {
+      showToast('👆 Сначала выбери здание внизу!');
+      return;
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    const gridPos = screenToIso(clickX, clickY);
+
+    // Проверяем границы
+    if (gridPos.x >= 0 && gridPos.x < gridSize && gridPos.y >= 0 && gridPos.y < gridSize) {
+      const key = `${gridPos.x},${gridPos.y}`;
+      
+      if (state.map[key]) {
+        showToast('❌ Здесь уже занято!');
         return;
       }
-      const b = BUILDINGS[buildMode];
-      if (state.coins < b.cost) {
+
+      const price = PRICES[selectedTool];
+      if (state.coins < price) {
         showToast('❌ Не хватает монет!');
         return;
       }
-      // Строим
-      state.coins -= b.cost;
-      state.buildings[key] = { type: buildMode, readyTime: Date.now() + b.time };
-      buildMode = null; // Сбрасываем режим
-      updateUI();
-      renderBuildings();
-      showToast(`🏗️ ${b.name} строится...`);
-    } 
-    // Если просто кликнули по зданию
-    else if (state.buildings[key]) {
-      const bData = state.buildings[key];
-      const bInfo = BUILDINGS[bData.type];
-      const now = Date.now();
+
+      // Строим!
+      state.coins -= price;
+      state.map[key] = { type: selectedTool };
       
-      if (now >= bData.readyTime) {
-        // Собираем налог
-        state.coins += bInfo.income;
-        bData.readyTime = now + bInfo.time; // Запускаем новый цикл
-        showToast(`+${bInfo.income} 💰`);
-        updateUI();
-        renderBuildings();
-      } else {
-        // Показываем сколько осталось
-        const left = Math.ceil((bData.readyTime - now) / 1000);
-        showToast(`⏳ Осталось ${left} сек`);
-      }
+      updateUI();
+      draw();
+      
+      // Автоматически снимаем выделение, чтобы строить по одному
+      selectedTool = null;
+      document.querySelectorAll('.shop-btn').forEach(btn => btn.classList.remove('active'));
     }
+  });
+
+  // --- UI И УВЕДОМЛЕНИЯ ---
+  function selectBuild(type) {
+    selectedTool = type;
+    document.querySelectorAll('.shop-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`btn-${type}`).classList.add('active');
+    showToast('Выбери место на карте!');
   }
 
-  // --- ОТРИСОВКА ЗДАНИЙ ---
-  function renderBuildings() {
-    // Очищаем старые 3D-объекты
-    document.querySelectorAll('.building').forEach(el => el.remove());
-
-    for (const [key, data] of Object.entries(state.buildings)) {
-      const [x, y] = key.split(',').map(Number);
-      const cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
-      if (!cell) continue;
-
-      const bInfo = BUILDINGS[data.type];
-      const isReady = Date.now() >= data.readyTime;
-
-      // Создаем 3D-здание
-      const el = document.createElement('div');
-      el.className = `building ${bInfo.class}`;
-      el.style.setProperty('--h', isReady ? '40px' : '15px'); // Если строится - низкое
-
-      // Крыша
-      const roof = document.createElement('div');
-      roof.className = 'face roof';
-      el.appendChild(roof);
-
-      // Стены
-      const wallL = document.createElement('div');
-      wallL.className = 'face wall-left';
-      el.appendChild(wallL);
-
-      const wallR = document.createElement('div');
-      wallR.className = 'face wall-right';
-      el.appendChild(wallR);
-
-      // Иконка над зданием (если готово)
-      if (isReady) {
-        const bubble = document.createElement('div');
-        bubble.className = 'bubble';
-        bubble.innerHTML = bInfo.icon;
-        bubble.onclick = (e) => {
-          e.stopPropagation(); // Чтобы не сработал клик по клетке
-          handleCellClick(x, y);
-        };
-        el.appendChild(bubble);
-      }
-
-      cell.appendChild(el);
-    }
-  }
-
-  // --- ОБНОВЛЕНИЕ ИНТЕРФЕЙСА ---
   function updateUI() {
-    document.getElementById('ui-coins').textContent = Math.floor(state.coins);
+    document.getElementById('ui-coins').textContent = state.coins;
     document.getElementById('ui-energy').textContent = state.energy;
-    document.getElementById('ui-level').textContent = state.level;
   }
 
-  // --- ВКЛАДКИ / МАГАЗИН ---
-  function openTab(tab) {
-    // Подсветка кнопки
-    document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`.menu-btn[data-tab="${tab}"]`).classList.add('active');
-
-    const modal = document.getElementById('modal');
-    const title = document.getElementById('modal-title-text');
-    const body = document.getElementById('modal-body');
-
-    if (tab === 'build') {
-      title.textContent = '🏗️ Строительство';
-      body.innerHTML = '';
-      for (const [key, b] of Object.entries(BUILDINGS)) {
-        body.innerHTML += `
-          <div class="shop-item">
-            <div class="info">
-              <div class="shop-icon">${b.icon}</div>
-              <div>
-                <div style="font-weight:bold;">${b.name}</div>
-                <div style="font-size:12px; color:#94a3b8;">Доход: ${b.income}💰 / ${b.time/1000}с</div>
-              </div>
-            </div>
-            <button class="buy-btn" onclick="startBuild('${key}')" ${state.coins < b.cost ? 'disabled' : ''}>
-              ${b.cost} 💰
-            </button>
-          </div>
-        `;
-      }
-      modal.classList.add('active');
-    } else if (tab === 'market') {
-      title.textContent = '🛒 Рынок';
-      body.innerHTML = `<div style="text-align:center; padding: 20px; color:#94a3b8;">Тут будут семена и ресурсы (в разработке)...</div>`;
-      modal.classList.add('active');
-    } else if (tab === 'quests') {
-      title.textContent = '📜 Квесты';
-      body.innerHTML = `
-        <div class="shop-item">
-          <div class="info">
-            <div class="shop-icon">🏠</div>
-            <div>
-              <div style="font-weight:bold;">Построй 3 дома</div>
-              <div style="font-size:12px; color:#94a3b8;">Награда: 500 💰</div>
-            </div>
-          </div>
-          <div style="color:#fbbf24; font-weight:bold;">0/3</div>
-        </div>
-      `;
-      modal.classList.add('active');
-    }
-  }
-
-  function startBuild(type) {
-    buildMode = type;
-    closeModal();
-    showToast(`👆 Выбери клетку для ${BUILDINGS[type].name}`);
-  }
-
-  function closeModal() {
-    document.getElementById('modal').classList.remove('active');
-    // Сброс активной кнопки, если ничего не выбрали
-    if (!buildMode) {
-      document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
-      document.querySelector('.menu-btn[data-tab="build"]').classList.add('active');
-    }
-  }
-
-  // --- УВЕДОМЛЕНИЯ (TOAST) ---
   let toastTimeout;
   function showToast(msg) {
-    let t = document.getElementById('toast');
-    if (!t) {
-      t = document.createElement('div');
-      t.id = 'toast';
-      t.style.cssText = `
-        position:fixed; top:80px; left:50%; transform:translateX(-50%);
-        background:rgba(0,0,0,0.8); color:white; padding:10px 20px;
-        border-radius:30px; font-weight:bold; font-size:14px; z-index:999;
-        transition:opacity 0.3s; opacity:0; border: 1px solid #38bdf8;
-        pointer-events:none; backdrop-filter: blur(4px); white-space:nowrap;
-      `;
-      document.body.appendChild(t);
-    }
+    const t = document.getElementById('toast');
     t.textContent = msg;
     t.style.opacity = '1';
     clearTimeout(toastTimeout);
     toastTimeout = setTimeout(() => { t.style.opacity = '0'; }, 2000);
   }
 
-  // --- ЦИКЛ ИГРЫ (Проверка таймеров) ---
-  setInterval(() => {
-    renderBuildings(); // Обновляем состояние зданий (появление иконок)
-  }, 1000);
-
-  // --- ЗАПУСК ---
-  initGrid();
+  // --- СТАРТ ---
+  resize();
   updateUI();
+  
+  // Добавим пару деревьев для красоты при старте
+  state.map['2,2'] = { type: 'tree' };
+  state.map['7,7'] = { type: 'tree' };
+  state.map['5,2'] = { type: 'tree' };
+  draw();
 </script>
 </body>
 </html>
